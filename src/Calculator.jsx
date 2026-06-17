@@ -10,7 +10,7 @@ const BUTTONS = [
 ]
 const OPS = new Set(['÷', '×', '−', '+'])
 
-export default function Calculator({ name, font }) {
+export default function Calculator({ name, font, theme }) {
   const [display, setDisplay]           = useState('0')
   const [prev, setPrev]                 = useState(null)
   const [op, setOp]                     = useState(null)
@@ -28,10 +28,10 @@ export default function Calculator({ name, font }) {
 
   function handleButton(label, idx) {
     // Sound
-    if (label === 'C')          playSound('clr', idx)
-    else if (label === '=')     playSound('eq',  idx)
-    else if (OPS.has(label))    playSound('op',  idx)
-    else                        playSound('number', idx)
+    if (label === 'C')          playSound('clr',    idx, theme)
+    else if (label === '=')     playSound('eq',     idx, theme)
+    else if (OPS.has(label))    playSound('op',     idx, theme)
+    else                        playSound('number', idx, theme)
 
     // Logic
     if (label === 'C') {
@@ -83,7 +83,7 @@ export default function Calculator({ name, font }) {
         {BUTTONS.flat().map((label, i) => (
           <button key={i} className={btnClass(label)}
             onClick={() => handleButton(label, i)}
-            onMouseEnter={() => playSound('hover', i)}>
+            onMouseEnter={() => playSound('hover', i, theme)}>
             {label}
           </button>
         ))}

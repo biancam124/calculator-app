@@ -2,11 +2,9 @@ const PENTA = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.5, 1174.66, 1318.51]
 
 let ctx = null
 let muted = false
-let currentTheme = 'night'
 
 export function setMuted(val) { muted = val }
 export function getMuted() { return muted }
-export function setCurrentTheme(t) { currentTheme = t }
 
 function getCtx() {
   if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)()
@@ -14,8 +12,8 @@ function getCtx() {
   return ctx
 }
 
-// ── Starry Night: inharmonic bell ───────────────────────────────────────
-function bell(freq, vol = 0.09, delay = 0) {
+// ── Starry Night: inharmonic bell, long sustain ──────────────────────────
+function bell(freq, vol, delay = 0) {
   const c = getCtx(), t = c.currentTime + delay
   const master = c.createGain()
   master.gain.setValueAtTime(vol, t)
@@ -31,11 +29,11 @@ function bell(freq, vol = 0.09, delay = 0) {
 }
 
 // ── Cosmic: 8-bit square wave blip ──────────────────────────────────────
-function squareBeep(freq, vol = 0.07, delay = 0) {
+function squareBeep(freq, vol, delay = 0) {
   const c = getCtx(), t = c.currentTime + delay
   const g = c.createGain()
   g.gain.setValueAtTime(vol, t)
-  g.gain.setValueAtTime(vol * 0.55, t + 0.04)
+  g.gain.setValueAtTime(vol * 0.5, t + 0.04)
   g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18)
   g.connect(c.destination)
   const osc = c.createOscillator()
@@ -45,14 +43,11 @@ function squareBeep(freq, vol = 0.07, delay = 0) {
   osc.connect(g); osc.start(t); osc.stop(t + 0.22)
 }
 
-// ── Ocean: water drop — absolute pitch fall 1400Hz → 80Hz ───────────────
-// Using absolute frequencies so every press makes an unmistakable "bloop"
-// regardless of which button index is passed.
-function waterDrop(_freq, vol = 0.13, delay = 0) {
+// ── Ocean: 1400 → 80 Hz bloop (absolute, same every press) ──────────────
+function waterDrop(_freq, vol, delay = 0) {
   const c = getCtx(), t = c.currentTime + delay
-  // Noise splash transient
   try {
-    const len = Math.ceil(c.sampleRate * 0.06)
+    const len = Math.ceil(c.sampleRate * 0.05)
     const buf = c.createBuffer(1, len, c.sampleRate)
     const d = buf.getChannelData(0)
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1
@@ -60,96 +55,73 @@ function waterDrop(_freq, vol = 0.13, delay = 0) {
     const nf = c.createBiquadFilter()
     nf.type = 'bandpass'; nf.frequency.value = 1800; nf.Q.value = 0.4
     const ng = c.createGain()
-    ng.gain.setValueAtTime(vol * 0.9, t)
-    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.06)
+    ng.gain.setValueAtTime(vol * 0.8, t)
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.05)
     noise.connect(nf); nf.connect(ng); ng.connect(c.destination)
     noise.start(t)
   } catch (_) {}
-  // Pitch-falling resonance tone
   const g = c.createGain()
   g.gain.setValueAtTime(vol, t + 0.01)
   g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5)
   g.connect(c.destination)
   const osc = c.createOscillator()
   osc.type = 'sine'
-  osc.frequency.setValueAtTime(1400, t)      // always start at 1400 Hz
-  osc.frequency.exponentialRampToValueAtTime(80, t + 0.32)  // always land at 80 Hz
+  osc.frequency.setValueAtTime(1400, t)
+  osc.frequency.exponentialRampToValueAtTime(80, t + 0.32)
   osc.connect(g); osc.start(t); osc.stop(t + 0.55)
 }
 
 // ── Crimson Dusk: hard-clipped sawtooth → distorted guitar crunch ────────
-function guitarTwang(_freq, vol = 0.07, delay = 0) {
+function guitarTwang(_freq, vol, delay = 0) {
   const c = getCtx(), t = c.currentTime + delay
-  // Hard-clip waveshaper — turns sawtooth into gritty distortion
   const ws = c.createWaveShaper()
-  const n = 512; const curve = new Float32Array(n)
-  for (let i = 0; i < n; i++) {
-    const x = (i * 2 / n) - 1
+  const curve = new Float32Array(512)
+  for (let i = 0; i < 512; i++) {
+    const x = (i * 2 / 512) - 1
     curve[i] = Math.max(-0.55, Math.min(0.55, x * 10))
   }
   ws.curve = curve
-  // Low-pass sweeps hard down — the "wah" on the crunch
   const filt = c.createBiquadFilter()
   filt.type = 'lowpass'; filt.Q.value = 4
   filt.frequency.setValueAtTime(3500, t)
   filt.frequency.exponentialRampToValueAtTime(180, t + 0.55)
   const g = c.createGain()
-  g.gain.setValueAtTime(vol * 0.35, t)   // waveshaper adds gain; compensate
+  g.gain.setValueAtTime(vol * 0.35, t)
   g.gain.exponentialRampToValueAtTime(0.0001, t + 0.65)
   ws.connect(filt); filt.connect(g); g.connect(c.destination)
-  // Two sawtooth strings a perfect fifth apart, both capped low
-  const base = 110  // always low register — guitar lives here
   ;[1, 1.498].forEach(ratio => {
     const osc = c.createOscillator(), gg = c.createGain()
-    osc.type = 'sawtooth'; osc.frequency.value = base * ratio
-    gg.gain.value = 0.7
-    osc.connect(gg); gg.connect(ws)
-    osc.start(t); osc.stop(t + 0.7)
+    osc.type = 'sawtooth'; osc.frequency.value = 110 * ratio; gg.gain.value = 0.7
+    osc.connect(gg); gg.connect(ws); osc.start(t); osc.stop(t + 0.7)
   })
 }
 
-// ── Forest: hollow log woodblock — noise knock + low pitch-drop body ─────
-// Entirely percussive — no harmonic content, short duration, low register.
-// Nothing like a bell.
-function woodblock(_freq, vol = 0.13, delay = 0) {
+// ── Forest: unfiltered white noise burst — pure static, no pitch ─────────
+// Impossible to confuse with any pitched sound.
+function noiseBurst(_freq, vol, delay = 0) {
   const c = getCtx(), t = c.currentTime + delay
-  // Noise knock transient (the "tok" of wood)
   try {
-    const len = Math.ceil(c.sampleRate * 0.045)
+    const len = Math.ceil(c.sampleRate * 0.18)
     const buf = c.createBuffer(1, len, c.sampleRate)
     const d = buf.getChannelData(0)
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1
     const noise = c.createBufferSource(); noise.buffer = buf
-    const nf = c.createBiquadFilter()
-    nf.type = 'bandpass'; nf.frequency.value = 900; nf.Q.value = 3
-    const ng = c.createGain()
-    ng.gain.setValueAtTime(vol * 1.4, t)
-    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.045)
-    noise.connect(nf); nf.connect(ng); ng.connect(c.destination)
+    const g = c.createGain()
+    g.gain.setValueAtTime(vol * 0.9, t)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18)
+    noise.connect(g); g.connect(c.destination)
     noise.start(t)
   } catch (_) {}
-  // Low body resonance — pitch drops on impact like a hollow log
-  const g = c.createGain()
-  g.gain.setValueAtTime(vol, t)
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22)
-  g.connect(c.destination)
-  const osc = c.createOscillator()
-  osc.type = 'sine'
-  osc.frequency.setValueAtTime(200, t)
-  osc.frequency.exponentialRampToValueAtTime(75, t + 0.1)
-  osc.connect(g); osc.start(t); osc.stop(t + 0.26)
 }
 
-// ── Moonlight: glass harmonica — three detuned sines, very long decay ────
-// Micro-detuning creates a slow shimmer beat (≈8 Hz) that is instantly
-// recognisable as crystalline / glass.  Long tail reinforces the effect.
-function glassHarp(freq, vol = 0.065, delay = 0) {
+// ── Moonlight: three detuned sines — glassy shimmer, long tail ───────────
+function glassHarp(freq, vol, delay = 0) {
   const c = getCtx(), t = c.currentTime + delay
-  const base = freq * 2   // bright upper register
+  const base = freq * 2
   ;[1, 1.009, 0.992].forEach(detune => {
     const g = c.createGain()
     g.gain.setValueAtTime(vol, t)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 2.2)   // very long tail
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 2.2)
     g.connect(c.destination)
     const osc = c.createOscillator()
     osc.type = 'sine'; osc.frequency.value = base * detune
@@ -157,38 +129,34 @@ function glassHarp(freq, vol = 0.065, delay = 0) {
   })
 }
 
-// ── Hover tick ───────────────────────────────────────────────────────────
-function tick(vol = 0.025) {
-  const c = getCtx(), t = c.currentTime
-  const g = c.createGain()
-  g.gain.setValueAtTime(vol, t)
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.1)
-  g.connect(c.destination)
-  const osc = c.createOscillator()
-  osc.type = currentTheme === 'purple' ? 'square' : 'sine'
-  osc.frequency.value = currentTheme === 'teal' ? 1200
-    : currentTheme === 'crimson' ? 300
-    : currentTheme === 'silver' ? 2000
-    : 1400
-  osc.connect(g); osc.start(t); osc.stop(t + 0.12)
-}
-
 function synthFor(theme) {
   switch (theme) {
     case 'purple':  return squareBeep
     case 'teal':    return waterDrop
     case 'crimson': return guitarTwang
-    case 'emerald': return woodblock
+    case 'emerald': return noiseBurst
     case 'silver':  return glassHarp
     default:        return bell
   }
 }
 
-export function playSound(type, idx = 0) {
+// theme is passed explicitly — no module state needed
+export function playSound(type, idx = 0, theme = 'night') {
   if (muted) return
   try {
-    if (type === 'hover') { tick(0.025); return }
-    const play = synthFor(currentTheme)
+    if (type === 'hover') {
+      const c = getCtx(), t = c.currentTime
+      const g = c.createGain()
+      g.gain.setValueAtTime(0.022, t)
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.1)
+      g.connect(c.destination)
+      const osc = c.createOscillator()
+      osc.type = theme === 'purple' ? 'square' : 'sine'
+      osc.frequency.value = 1400
+      osc.connect(g); osc.start(t); osc.stop(t + 0.12)
+      return
+    }
+    const play = synthFor(theme)
     switch (type) {
       case 'number': play(PENTA[idx % PENTA.length], 0.10); break
       case 'op':     play(PENTA[(idx + 4) % PENTA.length] * 1.25, 0.12); break
