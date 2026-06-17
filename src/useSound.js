@@ -35,10 +35,28 @@ function bell(freq, vol = 0.09, delay = 0) {
   })
 }
 
+function tick(freq, vol = 0.025) {
+  const c = getCtx()
+  const t = c.currentTime
+  const g = c.createGain()
+  g.gain.setValueAtTime(vol, t)
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12)
+  g.connect(c.destination)
+  const osc = c.createOscillator()
+  osc.type = 'sine'
+  osc.frequency.value = freq
+  osc.connect(g)
+  osc.start(t)
+  osc.stop(t + 0.15)
+}
+
 export function playSound(type, idx = 0) {
   if (muted) return
   try {
     switch (type) {
+      case 'hover':
+        tick(PENTA[(idx + 3) % PENTA.length] * 1.5, 0.022)
+        break
       case 'number':
         bell(PENTA[idx % PENTA.length], 0.08)
         break
@@ -46,7 +64,6 @@ export function playSound(type, idx = 0) {
         bell(PENTA[(idx + 4) % PENTA.length] * 1.25, 0.10)
         break
       case 'eq':
-        // ascending three-note chime
         [0, 2, 5].forEach((n, j) => bell(PENTA[n], 0.09, j * 0.10))
         break
       case 'clr':

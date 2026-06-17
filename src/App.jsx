@@ -36,7 +36,7 @@ export default function App() {
         <Calculator name={calcName} font={font} />
       </div>
 
-      <NightSprites />
+      <NightSprites theme={theme} />
       <CustomPanel
         name={calcName} font={font} theme={theme}
         onName={setCalcName} onFont={setFont} onTheme={setTheme}

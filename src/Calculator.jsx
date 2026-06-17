@@ -81,7 +81,9 @@ export default function Calculator({ name, font }) {
       </div>
       <div className="grid">
         {BUTTONS.flat().map((label, i) => (
-          <button key={i} className={btnClass(label)} onClick={() => handleButton(label, i)}>
+          <button key={i} className={btnClass(label)}
+            onClick={() => handleButton(label, i)}
+            onMouseEnter={() => playSound('hover', i)}>
             {label}
           </button>
         ))}
