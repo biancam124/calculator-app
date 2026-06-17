@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { playSound } from './useSound'
 
 const BUTTONS = [
@@ -64,6 +64,31 @@ export default function Calculator({ name, font, theme }) {
     if (waitingForOperand) { setDisplay(label); setWaiting(false) }
     else { setDisplay(d => d === '0' ? label : d + label) }
   }
+
+  useEffect(() => {
+    const KEY_MAP = {
+      '0':'0','1':'1','2':'2','3':'3','4':'4',
+      '5':'5','6':'6','7':'7','8':'8','9':'9',
+      '.':'.','Enter':'=','=':'=',
+      '+':'+','-':'−','*':'×','/':'÷',
+      'Escape':'C','Backspace':'Backspace','%':'%',
+    }
+    function onKey(e) {
+      const label = KEY_MAP[e.key]
+      if (!label) return
+      e.preventDefault()
+      if (label === 'Backspace') {
+        setDisplay(d => d.length > 1 ? d.slice(0, -1) : '0')
+        playSound('clr', 0, theme)
+        return
+      }
+      const flat = BUTTONS.flat()
+      const idx = flat.indexOf(label)
+      handleButton(label, idx >= 0 ? idx : 0)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [display, prev, op, waitingForOperand, theme])
 
   function btnClass(label) {
     if (label === '0') return 'btn wide'
