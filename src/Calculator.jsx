@@ -72,9 +72,9 @@ export default function Calculator() {
 
   return (
     <div className="calc">
-      <div className="calc-title">⚒ Pierre's Calculator ⚒</div>
+      <div className="calc-title">✦ Starry Night ✦</div>
       <div className="display">
-        <div className="display-label">GOLD</div>
+        <div className="display-label">VALUE</div>
         <span>{display}</span>
       </div>
       <div className="grid">
