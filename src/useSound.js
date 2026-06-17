@@ -108,27 +108,36 @@ function guitarTwang(_freq, vol = 0.07, delay = 0) {
   })
 }
 
-// ── Forest: wooden marimba — sine + fast-decaying 4th harmonic ──────────
-// The 4th harmonic (4:1) decaying in 80 ms is the acoustic signature
-// of struck wood — immediately distinct from any sustained tone.
-function marimba(freq, vol = 0.11, delay = 0) {
+// ── Forest: hollow log woodblock — noise knock + low pitch-drop body ─────
+// Entirely percussive — no harmonic content, short duration, low register.
+// Nothing like a bell.
+function woodblock(_freq, vol = 0.13, delay = 0) {
   const c = getCtx(), t = c.currentTime + delay
-  // Fundamental — medium decay
+  // Noise knock transient (the "tok" of wood)
+  try {
+    const len = Math.ceil(c.sampleRate * 0.045)
+    const buf = c.createBuffer(1, len, c.sampleRate)
+    const d = buf.getChannelData(0)
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1
+    const noise = c.createBufferSource(); noise.buffer = buf
+    const nf = c.createBiquadFilter()
+    nf.type = 'bandpass'; nf.frequency.value = 900; nf.Q.value = 3
+    const ng = c.createGain()
+    ng.gain.setValueAtTime(vol * 1.4, t)
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.045)
+    noise.connect(nf); nf.connect(ng); ng.connect(c.destination)
+    noise.start(t)
+  } catch (_) {}
+  // Low body resonance — pitch drops on impact like a hollow log
   const g = c.createGain()
   g.gain.setValueAtTime(vol, t)
-  g.gain.exponentialRampToValueAtTime(vol * 0.25, t + 0.06)
-  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.55)
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22)
   g.connect(c.destination)
   const osc = c.createOscillator()
-  osc.type = 'sine'; osc.frequency.value = freq
-  osc.connect(g); osc.start(t); osc.stop(t + 0.6)
-  // 4th harmonic — decays very fast (gives the "clunk" attack)
-  const osc2 = c.createOscillator(), g2 = c.createGain()
-  g2.gain.setValueAtTime(vol * 0.7, t)
-  g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.08)
-  osc2.type = 'sine'; osc2.frequency.value = freq * 4
-  osc2.connect(g2); g2.connect(c.destination)
-  osc2.start(t); osc2.stop(t + 0.1)
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(200, t)
+  osc.frequency.exponentialRampToValueAtTime(75, t + 0.1)
+  osc.connect(g); osc.start(t); osc.stop(t + 0.26)
 }
 
 // ── Moonlight: glass harmonica — three detuned sines, very long decay ────
@@ -169,7 +178,7 @@ function synthFor(theme) {
     case 'purple':  return squareBeep
     case 'teal':    return waterDrop
     case 'crimson': return guitarTwang
-    case 'emerald': return marimba
+    case 'emerald': return woodblock
     case 'silver':  return glassHarp
     default:        return bell
   }
